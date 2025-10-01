@@ -19,7 +19,8 @@ resource "aws_lambda_function" "lambda_authorizer" {
 
   environment {
     variables = {
-      USER_POOL_ID = var.user_pool_id
+      USER_POOLS = "customer:${var.user_pools["customer"]},internal:${var.user_pools["internal"]}"
     }
+
   }
 }

@@ -3,7 +3,6 @@ variable "lambda_name" {
   type        = string
 }
 
-variable "user_pool_id" {
-  description = "O ID do User Pool do Cognito para validação de tokens."
-  type        = string
+variable "user_pools" {
+  type = map(string)
 }
