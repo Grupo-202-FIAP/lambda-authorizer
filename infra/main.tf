@@ -1,6 +1,13 @@
 module "cognito" {
   source = "./modules/cognito"
 
-  user_pool_name     = "backend-app-user-pool"
-  default_user_email = "admin@example.com"
+  project_name = "backend-app"
+}
+
+
+module "lambda" {
+  source = "./modules/lambda"
+
+  lambda_name       = "lambda_authorizer"
+  user_pool_id       = module.cognito.user_pool_id
 }

@@ -1,65 +1,67 @@
-resource "aws_cognito_user_pool" "this" {
-  name = var.user_pool_name
+resource "aws_cognito_user_pool" "main" {
+  name = "${var.project_name}-user-pool"
 
-  schema {
-    name                = "name"
-    attribute_data_type = "String"
-    mutable             = true
-    required            = true
+  # Configuração de Login
+  # Cognito exige pelo menos um atributo para login.
+  # Usuários internos usam EMAIL.
+  # Usuários externos podem usar CPF (que pode ser mapeado como um atributo customizado) ou e-mail/nome.
+  # Vamos definir 'email' como atributo de login padrão, mas permitiremos logins sem e-mail verificado.
+  username_attributes = ["email"]
+
+  # Como ROLE_CUSTOMER pode usar CPF, podemos permitir o login com um atributo customizado, mas
+  # para simplificar a criação inicial, focaremos no EMAIL/SENHA para o Cognito, e trataremos
+  # o login por CPF no fluxo de autenticação (Lambda Authorizer ou um pré-autenticação)
+
+  password_policy {
+    minimum_length    = 8
+    require_lowercase = true
+    require_uppercase = true
+    require_numbers   = true
+    require_symbols   = true
   }
 
-  schema {
-    name                = "email"
-    attribute_data_type = "String"
-    mutable             = true
-    required            = true
-  }
-
-  schema {
-    name                = "cpf"
-    attribute_data_type = "String"
-    mutable             = false
-    string_attribute_constraints {
-      min_length = 11
-      max_length = 14
-    }
-  }
-}
-
-# App client
-resource "aws_cognito_user_pool_client" "this" {
-  name           = "${var.user_pool_name}-client"
-  user_pool_id   = aws_cognito_user_pool.this.id
-  generate_secret = false
-}
-
-# Groups
-resource "aws_cognito_user_group" "employee" {
-  name         = "employee"
-  user_pool_id = aws_cognito_user_pool.this.id
-  description  = "Grupo de funcionários"
+  auto_verified_attributes = ["email"]
 }
 
 resource "aws_cognito_user_group" "customer" {
-  name         = "customer"
-  user_pool_id = aws_cognito_user_pool.this.id
-  description  = "Grupo de clientes"
+  name         = "ROLE_CUSTOMER"
+  user_pool_id = aws_cognito_user_pool.main.id
 }
 
-resource "aws_cognito_user_group" "guest" {
-  name         = "guest"
-  user_pool_id = aws_cognito_user_pool.this.id
-  description  = "Grupo de usuários convidados"
+resource "aws_cognito_user_group" "employee" {
+  name         = "ROLE_EMPLOYEE"
+  user_pool_id = aws_cognito_user_pool.main.id
 }
 
-# Usuário padrão
-resource "aws_cognito_user" "default_user" {
-  user_pool_id = aws_cognito_user_pool.this.id
-  username     = var.default_user_email
+resource "aws_cognito_user_group" "admin" {
+  name         = "ROLE_ADMIN"
+  user_pool_id = aws_cognito_user_pool.main.id
+}
 
-  attributes = {
-    email = var.default_user_email
-    name  = "Default User"
-    cpf   = "00000000000"
-  }
+# ROLE_GUEST não precisa de um grupo no Cognito, pois são usuários não autenticados/não cadastrados.
+# O Guest Access geralmente é controlado na aplicação por ausência de um token JWT válido.
+
+resource "aws_cognito_user_pool_client" "internal" {
+  name         = var.internal_app_client_name
+  user_pool_id = aws_cognito_user_pool.main.id
+
+  # Habilitamos o fluxo de autenticação SECURE REMOTE PASSWORD (SRP) - Padrão de segurança
+  explicit_auth_flows = ["ALLOW_USER_SRP_AUTH", "ALLOW_REFRESH_TOKEN_AUTH"]
+
+  # Não gerar segredo para apps front-end ou mobile (é mais seguro)
+  generate_secret = false
+}
+
+# 4. App Client para Usuários Clientes (Customer) - Login mais flexível
+resource "aws_cognito_user_pool_client" "customer" {
+  name         = var.customer_app_client_name
+  user_pool_id = aws_cognito_user_pool.main.id
+
+  # Permite o fluxo de login personalizado.
+  # O login por 'CPF' (ROLE_CUSTOMER) é um caso especial que você deve implementar
+  # usando um **Custom Auth Flow** no Cognito, chamando seu Lambda Authorizer
+  # ou um Lambda de 'Custom Authentication Challenge'.
+  explicit_auth_flows = ["ALLOW_USER_SRP_AUTH", "ALLOW_REFRESH_TOKEN_AUTH", "ALLOW_CUSTOM_AUTH"]
+
+  generate_secret = false
 }

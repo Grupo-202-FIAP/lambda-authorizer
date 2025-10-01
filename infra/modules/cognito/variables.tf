@@ -1,9 +1,16 @@
-variable "user_pool_name" {
-  description = "Nome do Cognito User Pool"
+variable "project_name" {
+  description = "Nome do projeto para prefixar recursos"
   type        = string
 }
 
-variable "default_user_email" {
-  description = "E-mail do usuário padrão"
+variable "customer_app_client_name" {
+  description = "Nome do App Client para clientes (Customer/Guest)"
   type        = string
+  default     = "customer-client"
+}
+
+variable "internal_app_client_name" {
+  description = "Nome do App Client para usuários internos (Employee/Admin)"
+  type        = string
+  default     = "internal-client"
 }
