@@ -4,11 +4,6 @@ data "archive_file" "lambda_authorizer_zip" {
   output_path = "./lambda_authorizer_code.zip"
 }
 
-# resource "aws_iam_role_policy_attachment" "lambda_logs" {
-#   role       = "LabRole"
-#   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
-# }
-
 resource "aws_lambda_function" "lambda_authorizer" {
   function_name = var.lambda_name
   handler       = "lambda.handler"
@@ -20,6 +15,7 @@ resource "aws_lambda_function" "lambda_authorizer" {
   environment {
     variables = {
       USER_POOLS = "customer:${var.user_pools["customer"]},internal:${var.user_pools["internal"]}"
+      REGION = "us-east-1"
     }
 
   }

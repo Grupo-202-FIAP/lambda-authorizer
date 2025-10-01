@@ -5,8 +5,8 @@ resource "aws_cognito_user_pool" "customer" {
   name = "${var.project_name}-customer-pool"
 
   # Login por CPF (custom auth)
-  username_attributes = [] # Desabilitamos email/phone como username
-  auto_verified_attributes = [] # Não verifica email automático
+  username_attributes = [] #
+  auto_verified_attributes = []
 
   password_policy {
     minimum_length    = 8
@@ -16,13 +16,12 @@ resource "aws_cognito_user_pool" "customer" {
     require_symbols   = true
   }
 
-  # Atributo customizado CPF
   schema {
     name                       = "custom:cpf"
     attribute_data_type        = "String"
     developer_only_attribute   = false
     mutable                    = false
-    required                   = false # não pode ser true no custom
+    required                   = false
     string_attribute_constraints {
       min_length = 11
       max_length = 14
