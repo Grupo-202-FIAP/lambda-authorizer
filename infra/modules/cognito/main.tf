@@ -79,9 +79,18 @@ resource "aws_cognito_user_pool_client" "internal" {
   name         = var.internal_app_client_name
   user_pool_id = aws_cognito_user_pool.internal.id
 
-  explicit_auth_flows = ["ALLOW_USER_SRP_AUTH", "ALLOW_REFRESH_TOKEN_AUTH"]
+  explicit_auth_flows = ["ALLOW_USER_PASSWORD_AUTH", "ALLOW_REFRESH_TOKEN_AUTH", "ALLOW_ADMIN_USER_PASSWORD_AUTH"]
 
   generate_secret = false
+
+  access_token_validity  = 60   # minutos (5–60)
+  id_token_validity      = 60   # minutos (5–60)
+  refresh_token_validity = 30   # dias (1–3650)
+  token_validity_units {
+    access_token  = "minutes"
+    id_token      = "minutes"
+    refresh_token = "days"
+  }
 }
 
 # Grupos para Internal
