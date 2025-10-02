@@ -6,7 +6,7 @@ from datetime import datetime, timedelta, timezone
 from botocore.exceptions import ClientError
 
 # --- Variáveis de Ambiente ---
-USER_POOLS = os.environ.get("USER_POOLS", "customer:us-east-1_abc123,internal:us-east-1_def456")  # TODO automatizar - Ex: "customer:us-east-1_abc123,internal:us-east-1_def456" TODO automatizar
+USER_POOLS = os.environ.get("USER_POOLS", "customer:us-east-1_R7bhXa09B,internal:us-east-1_UNnANkTz9")  # TODO automatizar - Ex: "customer:us-east-1_abc123,internal:us-east-1_def456" TODO automatizar
 JWT_SECRET = "TESTE_SECRET"      # TODO criar secret na organizacao segredo usado para assinar JWT (fluxo CPF)
 REGION = os.environ.get("REGION", "us-east-1")
 INTERNAL_APP_CLIENT_ID = "572r2n7ldg48vhj1tq0vq0edin"  # TODO automatizar - app client id do pool "internal"
