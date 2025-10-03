@@ -1,22 +1,21 @@
 data "archive_file" "lambda_authorizer_customer_zip" {
-  type        = "zip"
+  type        = var.lambda_archive_type
   source_dir  = "${path.module}/../../../src/lambda_authorizer_customer"
-  output_path = "./lambda_authorizer_customer_code.zip"
+  output_path = var.authorizer_customer_output_path
 }
 
 resource "aws_lambda_function" "lambda_authorizer_customer" {
-  function_name = "${var.lambda_name}"
-  handler       = "lambda_authorizer_customer.handler"
-  runtime       = "python3.9"
-  role          = "arn:aws:iam::975049999399:role/LabRole"
+  function_name    = var.authorizer_customer_name
+  handler          = var.authorizer_customer_handler
+  runtime          = var.lambda_runtime
+  role             = "arn:aws:iam::${var.account_id}:role/LabRole"
   filename         = data.archive_file.lambda_authorizer_customer_zip.output_path
   source_code_hash = data.archive_file.lambda_authorizer_customer_zip.output_base64sha256
 
   environment {
     variables = {
       USER_POOLS = "customer:${var.user_pools["customer"]}"
-      REGION     = "us-east-1"
-      JWT_SECRET = "TESTE_SECRET" # ideal usar AWS Secrets Manager
+      REGION     = var.region
     }
   }
 }
