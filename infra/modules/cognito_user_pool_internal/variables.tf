@@ -9,6 +9,6 @@ variable "internal_app_client_name" {
   default     = "internal-client"
 }
 
-variable "post_confirmation" {
+variable "next_lambda" {
   type        = string
 }

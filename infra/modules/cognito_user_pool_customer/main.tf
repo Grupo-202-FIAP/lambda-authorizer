@@ -26,7 +26,7 @@ resource "aws_cognito_user_pool" "customer" {
   }
 
   lambda_config {
-    post_confirmation = var.post_confirmation
+    pre_sign_up = var.next_lambda
   }
 }
 
