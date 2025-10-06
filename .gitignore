@@ -22,5 +22,4 @@ terraform.rc
 .terraform/
 
 # Sensitive variables file
-*.tfvars
 *.tfvars.json
