@@ -3,7 +3,6 @@ output "lambda_sync_internal_name" {
   value       = aws_lambda_function.lambda_sync_internal.function_name
 }
 
-output "lambda_sync_internal_invoke_arn" {
-  description = "ARN para invocação da Lambda Sync Internal"
-  value       = aws_lambda_function.lambda_sync_internal.invoke_arn
+output "lambda_sync_internal_arn" {
+  value = aws_lambda_function.lambda_sync_internal.arn
 }

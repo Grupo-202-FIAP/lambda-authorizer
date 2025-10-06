@@ -27,7 +27,7 @@ def handler(event, context):
     db_pass = secret_dict["password"]
     db_name = secret_dict["dbname"]
 
-    connection = pymysql.connect(
+    connection = psycopg2.connect(
         host=db_host,
         user=db_user,
         password=db_pass,

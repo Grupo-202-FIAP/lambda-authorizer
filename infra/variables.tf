@@ -114,13 +114,3 @@ variable "sync_customer_handler" {
   type        = string
 }
 
-variable "subnet_ids" {
-  description = "Lista de subnets privadas para rodar a Lambda dentro da VPC"
-  type        = list(string)
-}
-
-variable "security_group_ids" {
-  description = "Lista de Security Groups que a Lambda deve usar"
-  type        = list(string)
-}
-
