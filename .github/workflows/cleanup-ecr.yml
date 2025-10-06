@@ -1,0 +1,85 @@
+name: Cleanup Old ECR Images
+
+on:
+  schedule:
+    # Run every Sunday at 2 AM UTC
+    - cron: '0 2 * * 0'
+  workflow_dispatch: # Allow manual trigger
+
+env:
+  AWS_REGION: us-east-1
+  PROJECT_NAME: lambda-authorizer
+
+jobs:
+  cleanup-images:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        repository: 
+          - lambda-authorizer-customer
+          - lambda-authorizer-internal
+          - lambda-registration-customer
+          - lambda-registration-internal
+          - lambda-sync-customer
+          - lambda-sync-internal
+
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Cleanup old images
+        run: |
+          REPO_NAME="${{ env.PROJECT_NAME }}-${{ matrix.repository }}"
+          
+          echo "Cleaning up repository: $REPO_NAME"
+          
+          # Get all images except the 10 most recent tagged images and latest
+          IMAGES_TO_DELETE=$(aws ecr list-images \
+            --repository-name $REPO_NAME \
+            --filter tagStatus=TAGGED \
+            --query 'imageIds[?imageTag!=`latest`]' \
+            --output json | \
+            jq -r 'sort_by(.imagePushedAt) | reverse | .[10:] | .[] | select(.imageTag != "latest") | @base64')
+          
+          if [ -n "$IMAGES_TO_DELETE" ]; then
+            echo "Found images to delete:"
+            for img in $IMAGES_TO_DELETE; do
+              echo $img | base64 --decode | jq -r '.imageTag'
+            done
+            
+            # Delete old images
+            for img in $IMAGES_TO_DELETE; do
+              IMAGE_TAG=$(echo $img | base64 --decode | jq -r '.imageTag')
+              aws ecr batch-delete-image \
+                --repository-name $REPO_NAME \
+                --image-ids imageTag=$IMAGE_TAG
+              echo "Deleted image with tag: $IMAGE_TAG"
+            done
+          else
+            echo "No old images to delete in $REPO_NAME"
+          fi
+          
+      - name: Cleanup untagged images
+        run: |
+          REPO_NAME="${{ env.PROJECT_NAME }}-${{ matrix.repository }}"
+          
+          # Delete untagged images older than 1 day
+          UNTAGGED_IMAGES=$(aws ecr list-images \
+            --repository-name $REPO_NAME \
+            --filter tagStatus=UNTAGGED \
+            --query 'imageIds[?imageDigest!=null]' \
+            --output json)
+          
+          if [ "$UNTAGGED_IMAGES" != "[]" ]; then
+            echo "Deleting untagged images in $REPO_NAME"
+            aws ecr batch-delete-image \
+              --repository-name $REPO_NAME \
+              --image-ids "$UNTAGGED_IMAGES"
+            echo "Deleted untagged images"
+          else
+            echo "No untagged images to delete in $REPO_NAME"
+          fi

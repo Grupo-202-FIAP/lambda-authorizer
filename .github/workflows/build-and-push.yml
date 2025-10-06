@@ -1,0 +1,211 @@
+name: Build and Push Lambda Images to ECR
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'src/**'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'src/**'
+
+env:
+  AWS_REGION: us-east-1
+  PROJECT_NAME: lambda-authorizer
+  # ECR registry format: {account-id}.dkr.ecr.{region}.amazonaws.com
+
+jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      lambda-authorizer-customer: ${{ steps.changes.outputs.lambda-authorizer-customer }}
+      lambda-authorizer-internal: ${{ steps.changes.outputs.lambda-authorizer-internal }}
+      lambda-registration-customer: ${{ steps.changes.outputs.lambda-registration-customer }}
+      lambda-registration-internal: ${{ steps.changes.outputs.lambda-registration-internal }}
+      lambda-sync-customer: ${{ steps.changes.outputs.lambda-sync-customer }}
+      lambda-sync-internal: ${{ steps.changes.outputs.lambda-sync-internal }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect changes
+        uses: dorny/paths-filter@v2
+        id: changes
+        with:
+          filters: |
+            lambda-authorizer-customer:
+              - 'src/lambda_authorizer_customer/**'
+            lambda-authorizer-internal:
+              - 'src/lambda_authorizer_internal/**'
+            lambda-registration-customer:
+              - 'src/lambda_registration_customer/**'
+            lambda-registration-internal:
+              - 'src/lambda_registration_internal/**'
+            lambda-sync-customer:
+              - 'src/lambda_sync_customer/**'
+            lambda-sync-internal:
+              - 'src/lambda_sync_internal/**'
+
+  build-and-push:
+    needs: detect-changes
+    runs-on: ubuntu-latest
+    if: |
+      needs.detect-changes.outputs.lambda-authorizer-customer == 'true' ||
+      needs.detect-changes.outputs.lambda-authorizer-internal == 'true' ||
+      needs.detect-changes.outputs.lambda-registration-customer == 'true' ||
+      needs.detect-changes.outputs.lambda-registration-internal == 'true' ||
+      needs.detect-changes.outputs.lambda-sync-customer == 'true' ||
+      needs.detect-changes.outputs.lambda-sync-internal == 'true'
+    
+    strategy:
+      matrix:
+        include:
+          - name: lambda-authorizer-customer
+            path: src/lambda_authorizer_customer
+            changed: ${{ needs.detect-changes.outputs.lambda-authorizer-customer }}
+          - name: lambda-authorizer-internal
+            path: src/lambda_authorizer_internal
+            changed: ${{ needs.detect-changes.outputs.lambda-authorizer-internal }}
+          - name: lambda-registration-customer
+            path: src/lambda_registration_customer
+            changed: ${{ needs.detect-changes.outputs.lambda-registration-customer }}
+          - name: lambda-registration-internal
+            path: src/lambda_registration_internal
+            changed: ${{ needs.detect-changes.outputs.lambda-registration-internal }}
+          - name: lambda-sync-customer
+            path: src/lambda_sync_customer
+            changed: ${{ needs.detect-changes.outputs.lambda-sync-customer }}
+          - name: lambda-sync-internal
+            path: src/lambda_sync_internal
+            changed: ${{ needs.detect-changes.outputs.lambda-sync-internal }}
+
+    steps:
+      - name: Skip if no changes
+        if: matrix.changed != 'true'
+        run: echo "No changes detected for ${{ matrix.name }}, skipping..."
+
+      - name: Checkout code
+        if: matrix.changed == 'true'
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        if: matrix.changed == 'true'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Get AWS Account ID
+        if: matrix.changed == 'true'
+        id: get-account-id
+        run: |
+          ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+          echo "account-id=$ACCOUNT_ID" >> $GITHUB_OUTPUT
+          echo "AWS Account ID: $ACCOUNT_ID"
+
+      - name: Login to Amazon ECR
+        if: matrix.changed == 'true'
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Get repository information
+        if: matrix.changed == 'true'
+        id: get-repo-info
+        run: |
+          REPOSITORY_NAME="${{ env.PROJECT_NAME }}-${{ matrix.name }}"
+          REPO_URI=$(aws ecr describe-repositories --repository-names "$REPOSITORY_NAME" --query 'repositories[0].repositoryUri' --output text)
+          ECR_REGISTRY="${{ steps.get-account-id.outputs.account-id }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com"
+          
+          echo "repository-name=$REPOSITORY_NAME" >> $GITHUB_OUTPUT
+          echo "repo-uri=$REPO_URI" >> $GITHUB_OUTPUT
+          echo "ecr-registry=$ECR_REGISTRY" >> $GITHUB_OUTPUT
+          
+          echo "Repository Name: $REPOSITORY_NAME"
+          echo "Repository URI: $REPO_URI"
+          echo "ECR Registry: $ECR_REGISTRY"
+
+      - name: Build, tag, and push image to Amazon ECR
+        if: matrix.changed == 'true'
+        working-directory: ${{ matrix.path }}
+        env:
+          ECR_REGISTRY: ${{ steps.get-repo-info.outputs.ecr-registry }}
+          ECR_REPOSITORY: ${{ steps.get-repo-info.outputs.repository-name }}
+          REPOSITORY_URI: ${{ steps.get-repo-info.outputs.repo-uri }}
+          IMAGE_TAG: ${{ github.sha }}
+          ACCOUNT_ID: ${{ steps.get-account-id.outputs.account-id }}
+        run: |
+          echo "=== Build Information ==="
+          echo "Account ID: $ACCOUNT_ID"
+          echo "Region: ${{ env.AWS_REGION }}"
+          echo "ECR Registry: $ECR_REGISTRY"
+          echo "Repository Name: $ECR_REPOSITORY"
+          echo "Repository URI: $REPOSITORY_URI"
+          echo "Image Tag: $IMAGE_TAG"
+          echo "Branch: ${{ github.ref_name }}"
+          echo "========================="
+          
+          # Build the Docker image
+          echo "Building Docker image..."
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          echo "✅ Image built successfully: $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+          
+          # Tag with latest if this is main branch
+          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            echo "Tagging as latest (main branch)..."
+            docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
+            docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+            echo "✅ Pushed: $ECR_REGISTRY/$ECR_REPOSITORY:latest"
+          fi
+          
+          # Tag with branch name for non-main branches
+          if [ "${{ github.ref }}" != "refs/heads/main" ]; then
+            BRANCH_NAME=$(echo ${{ github.ref }} | sed 's/refs\/heads\///' | sed 's/[^a-zA-Z0-9._-]/-/g')
+            echo "Tagging with branch name: $BRANCH_NAME"
+            docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:$BRANCH_NAME
+            docker push $ECR_REGISTRY/$ECR_REPOSITORY:$BRANCH_NAME
+            echo "✅ Pushed: $ECR_REGISTRY/$ECR_REPOSITORY:$BRANCH_NAME"
+          fi
+          
+          # Push the commit SHA tag
+          echo "Pushing commit SHA tag..."
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          echo "✅ Pushed: $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+          
+          echo ""
+          echo "🎉 All images pushed successfully to registry: $ECR_REGISTRY"
+
+      - name: Image scan results
+        if: matrix.changed == 'true'
+        continue-on-error: true
+        run: |
+          # Wait a bit for the scan to complete
+          sleep 30
+          
+          # Get scan results
+          aws ecr describe-image-scan-findings \
+            --repository-name "${{ env.PROJECT_NAME }}-${{ matrix.name }}" \
+            --image-id imageTag="${{ github.sha }}" \
+            --query 'imageScanFindings.findingCounts' || echo "Scan not completed yet"
+
+  create-deployment-info:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Create deployment artifact
+        run: |
+          echo "Deployment Information" > deployment-info.txt
+          echo "Commit SHA: ${{ github.sha }}" >> deployment-info.txt
+          echo "Build Date: $(date)" >> deployment-info.txt
+          echo "Repository: ${{ github.repository }}" >> deployment-info.txt
+          echo "Branch: ${{ github.ref_name }}" >> deployment-info.txt
+          
+      - name: Upload deployment info
+        uses: actions/upload-artifact@v3
+        with:
+          name: deployment-info-${{ github.sha }}
+          path: deployment-info.txt
