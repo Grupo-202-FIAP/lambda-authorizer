@@ -24,6 +24,10 @@ resource "aws_cognito_user_pool" "customer" {
       max_length = 14
     }
   }
+
+  lambda_config {
+    post_confirmation = var.post_confirmation
+  }
 }
 
 # App Client para Customer

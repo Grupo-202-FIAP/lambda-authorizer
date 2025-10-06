@@ -83,3 +83,44 @@ variable "registration_internal_handler" {
   description = "Nome do handler da função Registration Internal."
   type        = string
 }
+
+variable "sync_internal_name" {
+  description = "Nome da função Lambda para o registro de usuários internos/admin."
+  type        = string
+}
+
+variable "sync_internal_output_path" {
+  description = "Caminho local para o arquivo .zip de deploy do Sync Internal."
+  type        = string
+}
+
+variable "sync_internal_handler" {
+  description = "Nome do handler da função Sync Internal."
+  type        = string
+}
+
+variable "sync_customer_name" {
+  description = "Nome da função Lambda para o sync de usuários"
+  type        = string
+}
+
+variable "sync_customer_output_path" {
+  description = "Caminho local para o arquivo .zip de deploy do Sync Internal."
+  type        = string
+}
+
+variable "sync_customer_handler" {
+  description = "Nome do handler da função Sync Internal."
+  type        = string
+}
+
+variable "subnet_ids" {
+  description = "Lista de subnets privadas para rodar a Lambda dentro da VPC"
+  type        = list(string)
+}
+
+variable "security_group_ids" {
+  description = "Lista de Security Groups que a Lambda deve usar"
+  type        = list(string)
+}
+

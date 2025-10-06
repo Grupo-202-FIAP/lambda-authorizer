@@ -20,6 +20,11 @@ resource "aws_cognito_user_pool" "internal" {
     mutable             = true
     required            = true
   }
+
+  lambda_config {
+    post_confirmation = var.post_confirmation
+  }
+
 }
 
 # App Client para Employee/Admin

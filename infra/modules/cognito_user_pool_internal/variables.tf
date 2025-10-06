@@ -8,3 +8,7 @@ variable "internal_app_client_name" {
   type        = string
   default     = "internal-client"
 }
+
+variable "post_confirmation" {
+  type        = string
+}

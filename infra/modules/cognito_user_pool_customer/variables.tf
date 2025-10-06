@@ -8,3 +8,7 @@ variable "customer_app_client_name" {
   type        = string
   default     = "customer-client"
 }
+
+variable "post_confirmation" {
+  type        = string
+}
