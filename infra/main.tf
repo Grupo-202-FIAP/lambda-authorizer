@@ -120,3 +120,25 @@ resource "aws_lambda_permission" "allow_cognito_invoke_customer" {
   principal     = "cognito-idp.amazonaws.com"
   source_arn    = module.cognito_user_pool_customer.cognito_customer_arn
 }
+
+module "api_gateway" {
+  source = "./modules/api_gateway"
+
+  name                          = "backend-api"
+  description                   = "API Gateway para as Lambdas do projeto"
+  stage_name                    = "dev"
+
+  # Use the customer-facing authorizer and registration lambdas
+  lambda_authorizer_invoke_arn  = module.lambda_authorizer_customer.lambda_authorizer_customer_invoke_arn
+  lambda_registration_invoke_arn = module.lambda_registration_customer.lambda_registration_customer_invoke_arn
+
+  lambda_authorizer_name       = module.lambda_authorizer_customer.lambda_authorizer_customer_name
+  lambda_registration_name     = module.lambda_registration_customer.lambda_registration_customer_name
+  
+  # Internal lambdas for /auth/internal and /register/internal
+  lambda_auth_internal_invoke_arn    = module.lambda_authorizer_internal.lambda_authorizer_internal_invoke_arn
+  lambda_register_internal_invoke_arn = module.lambda_registration_internal.lambda_registration_internal_invoke_arn
+
+  lambda_auth_internal_name    = module.lambda_authorizer_internal.lambda_authorizer_internal_name
+  lambda_register_internal_name = module.lambda_registration_internal.lambda_registration_internal_name
+}

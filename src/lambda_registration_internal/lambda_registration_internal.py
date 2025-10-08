@@ -57,7 +57,7 @@ def handler(event, context):
         return _response(500, {"message": f"Erro Cognito: {e}"})
     except Exception as e:
         print(f"Erro interno: {e}")
-        return _response(500, {"message": "Erro interno do servidor"})
+        return _response(500, {"message": "Erro interno do servidor:"})
 
 
 def _response(status, body):

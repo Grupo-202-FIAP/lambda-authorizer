@@ -41,3 +41,23 @@ variable "lambda_registration_name" {
   description = "Nome da função Lambda Registration"
   type        = string
 }
+
+variable "lambda_auth_internal_invoke_arn" {
+  description = "ARN de invocação da função Lambda Auth Internal"
+  type        = string
+}
+
+variable "lambda_register_internal_invoke_arn" {
+  description = "ARN de invocação da função Lambda Register Internal"
+  type        = string
+}
+
+variable "lambda_auth_internal_name" {
+  description = "Nome da função Lambda Auth Internal"
+  type        = string
+}
+
+variable "lambda_register_internal_name" {
+  description = "Nome da função Lambda Register Internal"
+  type        = string
+}

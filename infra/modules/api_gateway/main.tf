@@ -73,3 +73,53 @@ resource "aws_lambda_permission" "api_gateway_lambda_registration" {
   principal     = "apigateway.amazonaws.com"
   source_arn    = "${aws_apigatewayv2_api.crud_api.execution_arn}/*/*"
 }
+
+# Integração Lambda Auth Internal
+resource "aws_apigatewayv2_integration" "lambda_auth_internal_integration" {
+  api_id                 = aws_apigatewayv2_api.crud_api.id
+  integration_type       = "AWS_PROXY"
+  integration_uri        = var.lambda_auth_internal_invoke_arn
+  integration_method     = "POST"
+  payload_format_version = "2.0"
+}
+
+# Integração Lambda Register Internal
+resource "aws_apigatewayv2_integration" "lambda_register_internal_integration" {
+  api_id                 = aws_apigatewayv2_api.crud_api.id
+  integration_type       = "AWS_PROXY"
+  integration_uri        = var.lambda_register_internal_invoke_arn
+  integration_method     = "POST"
+  payload_format_version = "2.0"
+}
+
+# Rota POST /auth/internal para autenticação interna
+resource "aws_apigatewayv2_route" "auth_internal_route" {
+  api_id    = aws_apigatewayv2_api.crud_api.id
+  route_key = "POST /auth/internal"
+  target    = "integrations/${aws_apigatewayv2_integration.lambda_auth_internal_integration.id}"
+}
+
+# Rota POST /register/internal para cadastro interno
+resource "aws_apigatewayv2_route" "register_internal_route" {
+  api_id    = aws_apigatewayv2_api.crud_api.id
+  route_key = "POST /register/internal"
+  target    = "integrations/${aws_apigatewayv2_integration.lambda_register_internal_integration.id}"
+}
+
+# Permissões para o API Gateway invocar as funções Lambda internas
+resource "aws_lambda_permission" "api_gateway_lambda_auth_internal" {
+  statement_id  = "AllowExecutionFromAPIGatewayAuthInternal"
+  action        = "lambda:InvokeFunction"
+  function_name = var.lambda_auth_internal_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_apigatewayv2_api.crud_api.execution_arn}/*/*"
+}
+
+resource "aws_lambda_permission" "api_gateway_lambda_register_internal" {
+  statement_id  = "AllowExecutionFromAPIGatewayRegisterInternal"
+  action        = "lambda:InvokeFunction"
+  function_name = var.lambda_register_internal_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_apigatewayv2_api.crud_api.execution_arn}/*/*"
+}
+
