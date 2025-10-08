@@ -23,3 +23,4 @@ terraform.rc
 
 # Sensitive variables file
 *.tfvars.json
+infra/.terraform.lock.hcl
