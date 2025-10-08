@@ -26,5 +26,5 @@ sync_customer_name = "lambda_sync_customer"
 sync_customer_handler = "lambda_sync_customer.handler"
 sync_customer_output_path = "./lambda_sync_customer_code.zip"
 
-account_id="975049999399"
+account_id="189094178766"
 
